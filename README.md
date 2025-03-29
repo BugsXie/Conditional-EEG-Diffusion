@@ -1,7 +1,7 @@
 # Synthesizing EEG Signals from Event-Related Potential Paradigms with Conditional Diffusion Models
 
 ## Description
-Code associated with the paper "Synthesizing EEG Signals from Event-Related Potential Paradigms with Conditional Diffusion Models".
+Reproduce the work from the paper titled "Synthesizing EEG Signals from Event-Related Potential Paradigms with Conditional Diffusion Models".
 
 ## Installation 
 ```
