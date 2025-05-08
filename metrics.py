@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-# 
-# License: BSD (3-clause)
-
 from copy import deepcopy
 from typing import Any, List, Optional, Sequence, Tuple, Union
 

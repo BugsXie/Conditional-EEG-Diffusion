@@ -1,12 +1,9 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-#
-# License: BSD (3-clause)
-
 import datetime
 import os
 
 import lightning as l
 import torch as th
+th.set_float32_matmul_precision('high')
 from lightning.pytorch.callbacks import ModelCheckpoint
 from lightning.pytorch.strategies import DDPStrategy
 from torch.utils.data import DataLoader, random_split
@@ -36,13 +33,15 @@ def main():
     Config for training can be changed in the configs/Leee2019_ERP_CFG.py
     """
 
+    # 加载数据集并初始化训练路径
     dataset = Lee2019Dataset(**DATASET_CFG)
 
+    # 初始化训练路径
     checkpoint_dir = os.path.join(RUN_CFG["project_name"], RUN_CFG["run_name"]).replace(
         "\\", "/"
     )
 
-    # if conditional, configure the labels and create possible combinations
+    # if conditional, configure the labels and create possible combinations(条件扩散模型的条件组合设定, e.g., 以 subject/session/class 为条件)
     if isinstance(DATASET_CFG["user_conditions"], list):
         MODEL_CFG["model__conditionals_combinations"] = dataset.condition_combinations
 
@@ -56,13 +55,18 @@ def main():
         **DATASET_CFG,
     )
 
+    # 数据划分（训练/验证）  
     train_dataset, val_dataset = random_split(
         dataset,
-        [1 - RUN_CFG["val_split"], RUN_CFG["val_split"]],
-        th.Generator().manual_seed(42),
+        [1 - RUN_CFG["val_split"], RUN_CFG["val_split"]],  # 0.9:0.1
+        th.Generator().manual_seed(42),  # for reproducibility
     )
 
-    # create callbacks
+    '''
+    回调函数（callbacks）:
+    ModelCheckpoint: 每隔 checkpoint_freq 步保存一次模型，不限制数量（save_top_k=-1）。
+    EMACallback: 自定义的参数滑动平均回调，用于提升生成质量。
+    '''
     callbacks = [
         ModelCheckpoint(
             dirpath=checkpoint_dir,
@@ -75,10 +79,18 @@ def main():
 
     # create dataloaders
     train_dataloader = DataLoader(
-        train_dataset, batch_size=RUN_CFG["batch_size"], shuffle=False, drop_last=False
+        train_dataset, 
+        batch_size=RUN_CFG["batch_size"], 
+        shuffle=False, 
+        drop_last=False,
+        num_workers=os.cpu_count() // 2,  # use half of the CPU cores
     )
     val_dataloader = DataLoader(
-        val_dataset, batch_size=RUN_CFG["batch_size"], shuffle=False, drop_last=False
+        val_dataset, 
+        batch_size=RUN_CFG["batch_size"], 
+        shuffle=False, 
+        drop_last=False,
+        num_workers=os.cpu_count() // 2,  # use half of the CPU cores
     )
 
     trainer = l.Trainer(

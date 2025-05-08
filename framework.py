@@ -7,6 +7,7 @@ import copy
 import lightning as l
 import numpy as np
 import torch as th
+th.set_float32_matmul_precision("high")
 from lightning.pytorch.utilities.types import STEP_OUTPUT
 from torch import nn, optim
 

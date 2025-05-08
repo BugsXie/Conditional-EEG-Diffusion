@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-#
-# License: BSD (3-clause)
-
 import math
 from typing import List, Optional, Union
 import itertools
@@ -18,8 +14,10 @@ class Plotting:
     def __init__(
         self,
         channels: list,
+        output_prefix: str = None,  # 新增参数，用于动态文件命名
     ):
         self.channels = channels
+        self.output_prefix = output_prefix
 
     def evoked_plot(self, epochs_dict: dict) -> plt.figure:
         epoch_df = pd.DataFrame([])
@@ -58,7 +56,7 @@ class Plotting:
                 "generated: target",
                 "generated: non-target",
             ],
-            col_order=["Cz", "Pz", "O1"],
+            col_order=["O1", "O2", "Pz"],  # TODO：此处的电极参数是否可以设置为超参数
             style="Type",
             style_order=[
                 "real: target",
@@ -96,10 +94,14 @@ class Plotting:
             ax.set_title("")
         plt.tight_layout()
 
-        for legobj in g.legend.legendHandles:
+        for legobj in g.legend.legend_handles:  # bug fix
             legobj.set_linewidth(linewidth)
 
-        sns.move_legend(g, "center", bbox_to_anchor=(1.18, 0.85))
+        # import matplotlib.legend  # bug fix
+        # if not hasattr(matplotlib.legend.Legend, 'legendHandles'):  # bug fix
+        #     matplotlib.legend.Legend.legendHandles = matplotlib.legend.Legend.legend_handles  # bug fix
+
+        sns.move_legend(g, "center", bbox_to_anchor=(1.18, 0.85))  # bug fix(move_legend函数内修改legendHandles→legend_handles)
 
         isax = g.axes.flat[-1].inset_axes(bounds=(0.8, 1.3, 1, 1))
 
@@ -112,9 +114,13 @@ class Plotting:
             show_names=False,
             axes=isax,
         )
+        if self.output_prefix is not None:
+            filename = f"figures/{self.output_prefix}_timecourse.pdf"
+        else:
+            filename = "figures/subject52_session1_timecourse.pdf"
 
         g.savefig(
-            "figures/subject52_session1_timecourse.pdf",
+            filename,  # TODO：根据conditions来决定生成文件的名称
             dpi=None,
             facecolor="w",
             edgecolor="w",
@@ -126,9 +132,9 @@ class Plotting:
             metadata=None,
         )
 
-        plt.close(g.fig)
+        plt.close(g.figure)
 
-        return g.fig
+        return g.figure
 
     def SCM_plot(self, epochs_dict: dict) -> plt.figure:
         """Create a plot of the covariance matrices
@@ -201,7 +207,7 @@ class Plotting:
                 cbar_y = g.axes[i][0].get_position().y0
                 cbar_positions.append([0.92, cbar_y, 0.02, subplot_height])
 
-            cbar_axes = [g.fig.add_axes(pos) for pos in cbar_positions]
+            cbar_axes = [g.figure.add_axes(pos) for pos in cbar_positions]
 
             for i, row_name in enumerate(g.row_names):
                 for j, col_name in enumerate(g.col_names):
@@ -216,14 +222,20 @@ class Plotting:
                     current_ax.set_ylabel(row_name)
 
             g.set_titles(template="")
-            g.fig.subplots_adjust(right=0.9)
-            return g.fig
+            g.figure.subplots_adjust(right=0.9)
+            return g.figure
 
         SCM_df = create_SCM(epochs_dict)
         figure = create_SCM_plot(SCM_df)
 
+        # 根据 output_prefix 动态构造文件名
+        if self.output_prefix is not None:
+            filename = f"figures/SCM_{self.output_prefix}.pdf"
+        else:
+            filename = "figures/SCM.pdf"
+
         plt.savefig(
-            "figures/SCM.pdf",
+            filename,
             dpi=None,
             facecolor="w",
             edgecolor="w",

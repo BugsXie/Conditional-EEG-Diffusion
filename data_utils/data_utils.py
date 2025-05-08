@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-#
-# License: BSD (3-clause)
-
 from typing import List, Optional, Tuple, Union
 
 import mne
@@ -641,7 +637,7 @@ class Sampling:
         return sampled_epochs
 
 
-def compute_rebalanced_weights(df: pd.DataFrame) -> list:
+def compute_rebalanced_weights(df: pd.DataFrame) -> list:  # TODO:dataset属性，没调用吗？
     """
     Compute rebalanced weights based on the label distribution in the provided DataFrame.
 

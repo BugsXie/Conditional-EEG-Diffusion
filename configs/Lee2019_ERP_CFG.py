@@ -48,8 +48,8 @@ DATASET_CFG = dict(
     reject_treshold=150e-6,  # peak-to-peak difference before rejection (if set to 0, no rejection is applie)，（150 µV = 150e-6）
     cache=True,  # if True, cache the complete dataset
     path=r"datasets/",  # Folder of the dataset
-    use_presaved=False,  # Load preprocessed epochs
-    save=True,  # Save preprocessed epochs (redo necessary if you change anything above rejection treshold)
+    use_presaved=True,  # Load preprocessed epochs
+    save=False,  # Save preprocessed epochs (redo necessary if you change anything above rejection treshold)
     user_conditions=[
         "label",
         "subject",
@@ -113,8 +113,8 @@ SAMPLING_CFG = dict(
     split_condition="label",  # condition for comparison, make sure it is in DATASET_CFG["conditionals"]
     plot_channels=[
         "O1",
+        "O2",
         "Pz",
-        "Cz",
     ],  # channels that are plotted in plots that do not have all channels (to reduce clutter)
     sampler_name="pc",
     predictor_name="euler_maruyama",

@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-# 
-# License: BSD (3-clause)
-
 from metrics import AdaptedFrechetInceptionDistance, get_fid_model, Metrics
 from data_utils.data_utils import EpochHelperFunctions
 from configs.Lee2019_ERP_CFG import DATASET_CFG
@@ -16,26 +12,34 @@ import numpy as np
 dataset = Lee2019Dataset(**DATASET_CFG)
 
 EHF = EpochHelperFunctions(
-    dataset.y_df, dataset.mne_info, "label", dataset.reverse_mapping
+    y_df=dataset.y_df,             # 全部样本的 label DataFrame
+    mne_info=dataset.mne_info,     # MNE 信息（通道布局、采样率等）
+    split_condition="label",       # “split condition”——此处按 label 切分
+    reverse_mapping=dataset.reverse_mapping
 )
-epochs_array = EHF.create_epochs_array(dataset.X, dataset.y_df)
+epochs_array = EHF.create_epochs_array(dataset.X, dataset.y_df)  # dataset.X 是 (样本数, 通道数, 时间点数) 的 Tensor。将其转成 MNE 的 EpochsArray，并根据 y_df["label"] 生成事件编号（Target=0/NonTarget=1）。
 
-path_params = hf_hub_download(
-    repo_id="guido151/EEGNetv4",
-    filename="EEGNetv4_Lee2019_ERP/params.pt",
-)
-path_optimizer = hf_hub_download(
-    repo_id="guido151/EEGNetv4",
-    filename="EEGNetv4_Lee2019_ERP/optimizer.pt",
-)
-path_history = hf_hub_download(
-    repo_id="guido151/EEGNetv4",
-    filename="EEGNetv4_Lee2019_ERP/history.json",
-)
-path_criterion = hf_hub_download(
-    repo_id="guido151/EEGNetv4",
-    filename="EEGNetv4_Lee2019_ERP/criterion.pt",
-)
+# path_params = hf_hub_download(
+#     repo_id="guido151/EEGNetv4",
+#     filename="EEGNetv4_Lee2019_ERP/params.pt",
+# )
+# path_optimizer = hf_hub_download(
+#     repo_id="guido151/EEGNetv4",
+#     filename="EEGNetv4_Lee2019_ERP/optimizer.pt",
+# )
+# path_history = hf_hub_download(
+#     repo_id="guido151/EEGNetv4",
+#     filename="EEGNetv4_Lee2019_ERP/history.json",
+# )
+# path_criterion = hf_hub_download(
+#     repo_id="guido151/EEGNetv4",
+#     filename="EEGNetv4_Lee2019_ERP/criterion.pt",
+# )
+path_params = "EEGNetv4_Lee2019_ERP/params.pt"
+path_optimizer = "EEGNetv4_Lee2019_ERP/optimizer.pt"
+path_history = "EEGNetv4_Lee2019_ERP/history.json"
+path_criterion = "EEGNetv4_Lee2019_ERP/criterion.pt"
+
 
 model = EEGNetv4(
     n_chans=19,
@@ -55,10 +59,17 @@ net.load_params(
     path_history,
 )
 
+"""
+Metrics 里封装了：
+- ABA (averaged balanced accuracy)：分类器在不同样本子集上的准确率
+- SWD：Sliced–Wasserstein 距离
+- PAD、PLD：P300 峰值振幅/延迟差
+- SD‑MD：标准差曼哈顿距离
+"""
 between_session_metrics = Metrics(
     dataset.X,
-    net.module,
-    "O1",
+    net.module,        # EEGNet 模型，用于计算 ABA（分类准确率基线）
+    "O1",              # 用于 PAD/PLD 的通道
     DATASET_CFG["fmin"],
     DATASET_CFG["fmax"],
 )
@@ -109,17 +120,23 @@ between_session_metrics.full_dataset_metrics.to_csv(
 
 # Compute FID baselines
 
-fid_model = get_fid_model(model)
+fid_model = get_fid_model(model)  # 用 EEGNet 制作 FID 特征网络
 fid = AdaptedFrechetInceptionDistance(
     fid_model,
     th.tensor(epochs_array[0:2].copy().get_data(units="uV"), dtype=th.float32),
 )
+
+subject_ids = sorted(dataset.y_df["subject"].unique())
+split_index = len(subject_ids) // 2
+first_half_ids = subject_ids[:split_index]
+second_half_ids = subject_ids[split_index:]
+
 selected_epochs_array = epochs_array.copy()
 session1_indices = list(
-    dataset.y_df[(dataset.y_df["subject"].isin(np.arange(0, 26)))].index
+    dataset.y_df[(dataset.y_df["subject"].isin(first_half_ids))].index
 )
 session2_indices = list(
-    dataset.y_df[dataset.y_df["subject"].isin(np.arange(26, 53))].index
+    dataset.y_df[dataset.y_df["subject"].isin(second_half_ids)].index
 )
 ea1 = selected_epochs_array.copy()[session1_indices]
 ea2 = selected_epochs_array.copy()[session2_indices]

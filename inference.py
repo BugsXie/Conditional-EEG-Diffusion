@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-# 
-# License: BSD (3-clause)
-
 import os
 
 import torch as th
@@ -59,22 +55,10 @@ def run_inference(
         MODEL_CFG["model__conditionals_combinations"] = dataset.condition_combinations
 
     # load pre-trained EEGNet
-    path_params = hf_hub_download(
-        repo_id="guido151/EEGNetv4",
-        filename="EEGNetv4_Lee2019_ERP/params.pt",
-    )
-    path_optimizer = hf_hub_download(
-        repo_id="guido151/EEGNetv4",
-        filename="EEGNetv4_Lee2019_ERP/optimizer.pt",
-    )
-    path_history = hf_hub_download(
-        repo_id="guido151/EEGNetv4",
-        filename="EEGNetv4_Lee2019_ERP/history.json",
-    )
-    path_criterion = hf_hub_download(
-        repo_id="guido151/EEGNetv4",
-        filename="EEGNetv4_Lee2019_ERP/criterion.pt",
-    )
+    path_params = "EEGNetv4_Lee2019_ERP/params.pt"
+    path_optimizer = "EEGNetv4_Lee2019_ERP/optimizer.pt"
+    path_history = "EEGNetv4_Lee2019_ERP/history.json"
+    path_criterion = "EEGNetv4_Lee2019_ERP/criterion.pt"
 
     model = EEGNetv4(
         n_chans=19,
@@ -102,8 +86,17 @@ def run_inference(
         DATASET_CFG["fmax"],
     )
 
+    if isinstance(combination, pd.DataFrame) and not combination.empty:
+        subject = combination["subject"].iloc[0]
+        session = combination["session"].iloc[0]
+        # 构造前缀，例如 "subject6_session_1"
+        output_prefix = f"subject{subject}_{session}"
+    else:
+        output_prefix = None
+
     plotting = Plotting(
         SAMPLING_CFG["plot_channels"],
+        output_prefix=output_prefix,
     )
 
     sampling = Sampling(
@@ -153,16 +146,13 @@ sampling_fn_cfg = {
     "eps": 1e-5,
 }
 
-model_ckpt = hf_hub_download(
-    repo_id="guido151/checkpoints",
-    filename="EEGWave_step600000/model.ckpt",
-)
+model_ckpt = "EEGWave_step600000/model.ckpt"
 
 combination = pd.DataFrame(
     {
         "label": ['Target', "NonTarget"],
-        "subject": [52, 52],
-        "session": ['session_1', 'session_1'],
+        "subject": [3, 3],
+        "session": ['session_2', 'session_2'],
     }
 )
 

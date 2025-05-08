@@ -17,7 +17,12 @@ class EMACallback(Callback):
 
     def on_train_batch_end(
         self,
+        trainer: Trainer,
         pl_module: LightningModule,
+        outputs: Optional[Any],
+        batch: Any,
+        batch_idx: int,
+        dataloader_idx: int = 0
     ):
         """
         Updates the EMA model using the current trained model after each training batch

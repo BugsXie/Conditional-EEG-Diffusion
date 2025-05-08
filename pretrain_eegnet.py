@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-#
-# License: BSD (3-clause)
-
 import pandas as pd
 import skorch
 import torch as th
@@ -31,37 +27,33 @@ def train_eegnet(dataset: EEGDataset, dataset_name: str, ch_names: list, n_times
     """
 
     # split the dataset into train and test sets
-    test_dataset, train_dataset = train_test_split(
+    train_dataset, test_dataset = train_test_split(
         dataset,
         test_size=0.2,
         shuffle=True,
-        stratify=dataset.y_df_train["label"],
+        stratify=dataset.y_df["label"],  # y_df_train → y_df
     )
 
-    label_idx = dataset.y_df_all.columns.to_list().index("label")
-    X_train, y_train = np.array([i[0] for i in train_dataset]), np.array(
-        [i[1][label_idx] for i in train_dataset]
-    )
-    X_test, y_test = np.array([i[0] for i in test_dataset]), np.array(
-        [i[1][label_idx] for i in test_dataset]
-    )
+    label_idx = dataset.y_df.columns.to_list().index("label")
+    X_train, y_train = np.array([i[0] for i in train_dataset]), np.array([i[1][label_idx] for i in train_dataset])
+    X_test, y_test = np.array([i[0] for i in test_dataset]), np.array([i[1][label_idx] for i in test_dataset])
 
     # initialize model
     model = EEGNetv4(
         n_chans=len(ch_names),
-        n_outputs=dataset.y_df_all["label"].nunique(),
+        n_outputs=dataset.y_df["label"].nunique(),
         n_times=n_times,
         drop_prob=0.25,
     )
     print(dataset.rebalanced_weights)
-    print(dataset.y_df_all["label"].value_counts())
+    print(dataset.y_df["label"].value_counts())
 
     # initialize loss
     criterion = nn.CrossEntropyLoss(weight=th.tensor(dataset.rebalanced_weights))
     net = NeuralNet(
         model,
         criterion=criterion,
-        max_epochs=1000,
+        max_epochs=100,
         callbacks=[skorch.callbacks.Checkpoint(dirname=f"EEGNet/{dataset_name}")],
         device=RUN_CFG["device"],
     )
@@ -86,5 +78,8 @@ def train_eegnet(dataset: EEGDataset, dataset_name: str, ch_names: list, n_times
 dataset = Lee2019Dataset(**DATASET_CFG)
 n_times = dataset.X.shape[2]
 train_eegnet(
-    dataset, DATASET_CFG["dataset"], ch_names=DATASET_CFG["ch_names"], n_times=n_times
+    dataset=dataset, 
+    dataset_name=DATASET_CFG["dataset"], 
+    ch_names=DATASET_CFG["ch_names"], 
+    n_times=n_times
 )

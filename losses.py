@@ -33,7 +33,7 @@ from sde import VESDE, VPSDE
 def get_sde_loss_fn(
     sde, reduce_mean=True, continuous=True, likelihood_weighting=True, eps=1e-5
 ):
-    """Create a loss function for training with arbirary SDEs.
+    """Create a loss function for training with arbitrary SDEs.
 
     Args:
         sde: An `sde_lib.SDE` object that represents the forward SDE.

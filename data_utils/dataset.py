@@ -1,7 +1,3 @@
-# Authors: Guido Klein <guido.klein@ru.nl>
-#
-# License: BSD (3-clause)
-
 import os
 from glob import glob
 from typing import Optional, Tuple, Union
@@ -58,7 +54,7 @@ class EEGDataset(Dataset):
         self.reverse_mapping = {}
         self.mne_info = {}
         self.condition_combinations = None
-        self.rebalance_weights = []
+        self.rebalanced_weights = []  # debug: rebalance_weights → rebalanced_weights
 
         if use_presaved:
             epo, df = self.load_data()
@@ -66,10 +62,7 @@ class EEGDataset(Dataset):
             epo, df = self.get_data()
             if save:
                 self.save_data(epo, df)
-        (
-            self.X,
-            self.y_df,
-        ) = self.apply_transforms(epo, df)
+        (self.X, self.y_df,) = self.apply_transforms(epo, df)
 
     def get_data(self):
         pass
@@ -110,10 +103,12 @@ class EEGDataset(Dataset):
         else:
             y_df = None
             self.conditionals_combinations = None
-
         X = epo.get_data(units="uV")
 
         X = th.tensor(X, dtype=th.float32)
+
+        # ===== 新增：计算并存储重平衡权重 =====
+        self.rebalanced_weights = compute_rebalanced_weights(y_df)
 
         return X, y_df
 
@@ -199,7 +194,18 @@ class EEGDataset(Dataset):
         Returns:
             pd.DataFrame: Standardized meta data
         """
+        meta = meta.copy()
+
+        # session: 0 → session_1，1 → session_2
+        if "session" in meta.columns:
+            meta["session"] = meta["session"].apply(lambda x: f"session_{int(float(x)) + 1}")
+
+        # run: '1train' → 'train', '4test' → 'test'
+        if "run" in meta.columns:
+            meta["run"] = meta["run"].apply(lambda x: ''.join(filter(str.isalpha, str(x))))
+
         return meta
+    
 
     def condition_indices(
         self,
@@ -384,6 +390,7 @@ class MOABBDataset(EEGDataset):
         )
 
         df = meta
+        df = self.standardize_meta(meta)
         df["label"] = labels
 
         return epo, df
